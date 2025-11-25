@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>와인 추천 필터링 시스템 (페이지네이션 적용)</title>
+    <title>와인 추천 필터링 시스템 (모달 팝업 적용)</title>
     <style>
         /* 기본 스타일 */
         body {
@@ -75,7 +75,7 @@
         .filter-option label {
             display: flex;
             align-items: center;
-            gap: 5px; /* 국기와 텍스트 사이 간격 */
+            gap: 5px; 
         }
         
         /* 당도 1~5 버튼 스타일 */
@@ -123,7 +123,7 @@
         /* 한 페이지 6개에 맞춰 카드 레이아웃 조정 */
         #wine-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* 카드를 조금 더 크게 */
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
             gap: 20px;
         }
 
@@ -136,11 +136,12 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             background-color: #fff;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer; /* 클릭 가능 표시 */
         }
         .wine-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
         }
         .card-thumbnail {
             width: 80px; 
@@ -205,6 +206,10 @@
         }
         
         /* 페이지네이션 버튼 스타일 */
+        #pagination-controls {
+            text-align: center; 
+            margin-top: 20px;
+        }
         #pagination-controls button {
             padding: 8px 12px;
             margin: 0 2px;
@@ -228,6 +233,99 @@
             opacity: 0.5;
         }
 
+        /* --- 모달 팝업 스타일 --- */
+        #modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none; /* 기본 숨김 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #wine-modal {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        #modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 2em;
+            font-weight: 100;
+            color: #aaa;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        #modal-close-btn:hover {
+            color: #722f37;
+        }
+
+        .modal-content-flex {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .modal-img-area {
+            flex-shrink: 0;
+            width: 150px;
+            text-align: center;
+        }
+        .modal-img-area img {
+            max-width: 100%;
+            height: 200px; 
+            object-fit: contain;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .modal-text-area {
+            flex-grow: 1;
+        }
+
+        .modal-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #722f37;
+            margin-bottom: 10px;
+        }
+
+        .modal-detail-info p {
+            margin: 5px 0;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+        .modal-detail-info strong {
+            display: inline-block;
+            width: 80px;
+            color: #5c262c;
+            font-weight: bold;
+        }
+
+        .modal-tn, .modal-pairing {
+            margin-top: 15px;
+            padding: 10px;
+            border-left: 5px solid #e74c3c;
+            background-color: #fcf8f8;
+            border-radius: 4px;
+            font-size: 1.1em;
+        }
+        .modal-pairing {
+            border-left: 5px solid #722f37;
+            background-color: #f7f9fc;
+        }
+
+
         /* 모바일 반응형 */
         @media (max-width: 800px) {
             .main-layout {
@@ -239,6 +337,20 @@
             }
             #wine-list {
                 grid-template-columns: 1fr;
+            }
+            .modal-content-flex {
+                flex-direction: column;
+                align-items: center;
+            }
+            .modal-img-area {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            .modal-img-area img {
+                height: 150px; 
+            }
+            .modal-name {
+                text-align: center;
             }
         }
     </style>
@@ -289,13 +401,22 @@
                 <div id="wine-list">
                     </div>
 
-                <div id="pagination-controls" style="text-align: center; margin-top: 20px;">
+                <div id="pagination-controls">
                     </div>
             </div>
 
         </div>
 
     </div>
+
+    <div id="modal-backdrop" onclick="closeModal()">
+        <div id="wine-modal" onclick="event.stopPropagation()">
+            <button id="modal-close-btn" onclick="closeModal()">&times;</button>
+            <div id="modal-content">
+                </div>
+        </div>
+    </div>
+
 
     <script>
         /**
@@ -432,6 +553,8 @@
         // DOM 요소
         const wineListElement = document.getElementById('wine-list');
         const searchBox = document.getElementById('search-box');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
 
         document.addEventListener('DOMContentLoaded', () => {
             populateCountryFilters();
@@ -477,11 +600,10 @@
             const container = document.getElementById('country-filters');
 
             countries.forEach(country => {
-                const flag = getFlagEmoji(country); // 국기 가져오기
+                const flag = getFlagEmoji(country); 
                 const div = document.createElement('div');
                 div.className = 'filter-option';
                 
-                // 국기 이모지를 <label> 안에 추가
                 div.innerHTML = `
                     <input type="checkbox" id="country-${country}" name="country" value="${country}">
                     <label for="country-${country}">${flag} ${country}</label>
@@ -547,11 +669,9 @@
             wineListElement.innerHTML = ''; 
             const totalWines = wines.length;
             
-            // 현재 페이지에 보여줄 와인 인덱스 계산
             const startIndex = (currentPage - 1) * winesPerPage;
             const endIndex = startIndex + winesPerPage;
             
-            // 현재 페이지의 와인만 추출
             const winesForPage = wines.slice(startIndex, endIndex);
 
             if (totalWines === 0) {
@@ -564,10 +684,11 @@
                 const card = document.createElement('div');
                 card.className = 'wine-card';
                 
-                // 당도(1~5)를 시각적인 별표(●)로 변환
-                const sweetnessDisplay = '●'.repeat(wine.당도) + '○'.repeat(5 - wine.당도);
+                // *** 카드 클릭 이벤트 추가 ***
+                card.onclick = () => showWineDetails(wine); 
+                // ************************
                 
-                // 국기 이모지 가져오기
+                const sweetnessDisplay = '●'.repeat(wine.당도) + '○'.repeat(5 - wine.당도);
                 const flag = getFlagEmoji(wine.국가);
 
                 card.innerHTML = `
@@ -590,7 +711,6 @@
                 wineListElement.appendChild(card);
             });
 
-            // 페이지네이션 컨트롤 렌더링
             renderPagination(totalWines);
         }
 
@@ -605,16 +725,12 @@
             if (totalPages <= 1) return;
 
             let paginationHtml = '';
-
-            // 이전 버튼
             paginationHtml += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>이전</button>`;
 
-            // 페이지 번호 (최대 5개 표시)
             const maxPageNumbers = 5;
             let startPage = Math.max(1, currentPage - Math.floor(maxPageNumbers / 2));
             let endPage = Math.min(totalPages, startPage + maxPageNumbers - 1);
             
-            // 끝 페이지가 5개가 안될 경우 시작 페이지를 조정
             if (endPage - startPage + 1 < maxPageNumbers) {
                 startPage = Math.max(1, endPage - maxPageNumbers + 1);
             }
@@ -624,7 +740,6 @@
                 paginationHtml += `<button class="${activeClass}" onclick="goToPage(${i})">${i}</button>`;
             }
 
-            // 다음 버튼
             paginationHtml += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>`;
 
             paginationContainer.innerHTML = paginationHtml;
@@ -639,9 +754,7 @@
 
             if (page >= 1 && page <= totalPages) {
                 currentPage = page;
-                // 필터링은 다시 할 필요 없이 저장된 목록을 페이지 번호만 바꿔서 렌더링
                 renderWineList(currentFilteredWines); 
-                // 와인 목록 상단으로 스크롤 이동
                 document.getElementById('wine-list').scrollIntoView({ behavior: 'smooth' });
             }
         }
@@ -654,9 +767,67 @@
                 checkbox.checked = false;
             });
             searchBox.value = '';
-            currentPage = 1; // 페이지 초기화
+            currentPage = 1; 
             filterWines(); 
         }
+
+
+        // --- 모달 관련 함수 ---
+
+        /**
+         * 와인 상세 정보를 모달로 표시
+         */
+        function showWineDetails(wine) {
+            const sweetnessDisplay = '●'.repeat(wine.당도) + '○'.repeat(5 - wine.당도);
+            const flag = getFlagEmoji(wine.국가);
+
+            const contentHtml = `
+                <div class="modal-name">${wine.이름}</div>
+                <div class="modal-content-flex">
+                    <div class="modal-img-area">
+                        <img src="${wine.imgSrc}" alt="${wine.이름} 이미지" onerror="this.onerror=null; this.src='images/default_bottle.png';">
+                    </div>
+                    <div class="modal-text-area">
+                        <div class="modal-detail-info">
+                            <p><strong>가격</strong>: ₩${wine.가격.toLocaleString()}</p>
+                            <p><strong>국가</strong>: ${flag} ${wine.국가}</p>
+                            <p><strong>종류</strong>: ${wine.분류}</p>
+                            <p><strong>도수</strong>: ${wine.도수}</p>
+                            <p><strong>바디</strong>: ${wine.바디} (${'◼︎'.repeat(wine.바디 === 'full' ? 3 : wine.바디 === 'medium' ? 2 : 1)}${'◻︎'.repeat(3 - (wine.바디 === 'full' ? 3 : wine.바디 === 'medium' ? 2 : 1))})</p>
+                            <p><strong>당도</strong>: 🍭 ${sweetnessDisplay}</p>
+                            <p><strong>평점</strong>: ⭐️ ${wine.평점}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-tn">
+                    <h4>📝 테이스팅 노트 (TN)</h4>
+                    <p>${wine.TN}</p>
+                </div>
+                <div class="modal-pairing">
+                    <h4>🍴 추천 페어링</h4>
+                    <p>${wine.페어링}</p>
+                </div>
+            `;
+            
+            modalContent.innerHTML = contentHtml;
+            modalBackdrop.style.display = 'flex'; // 모달 표시
+            document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+        }
+
+        /**
+         * 모달 닫기
+         */
+        function closeModal() {
+            modalBackdrop.style.display = 'none'; // 모달 숨김
+            document.body.style.overflow = 'auto'; // 배경 스크롤 허용
+        }
+        
+        // ESC 키로 모달 닫기 기능 추가
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && modalBackdrop.style.display === 'flex') {
+                closeModal();
+            }
+        });
 
     </script>
 </body>
